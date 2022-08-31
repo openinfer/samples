@@ -55,7 +55,6 @@ class MyCameraHandler(private val activity: FragmentActivity, private val previe
                 CameraSelector.DEFAULT_BACK_CAMERA
             // Preview
             val preview = Preview.Builder()
-                .setTargetResolution(Utils.getSizeMax())
                 .build()
                 .also {
                     it.setSurfaceProvider(previewView.surfaceProvider)
@@ -63,6 +62,7 @@ class MyCameraHandler(private val activity: FragmentActivity, private val previe
 
             val imageAnalysis = ImageAnalysis.Builder()
                 .setTargetResolution(Utils.getSizeSmall())
+//                .setTargetResolution(Size(1080, 1080))
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
             imageAnalysis.setAnalyzer(executor, ImageAnalysis.Analyzer { imageProxy ->
