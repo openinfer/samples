@@ -26,16 +26,6 @@ object Utils {
     }
 
     fun getSizeMax(): Size {
-
-//        return Size(1080, 1920)
-
-//            return Size(1920, 1207)
-//            return Size(1152, 2048)
-//            return Size(1944, 2592)
-//            return Size(1080, 1920)
-//            return Size(1520, 2688)
-//            return Size(1536, 2048)
-//            return Size(2160, 3840)
         return Size(getScreenWidth(), getScreenHeight())
     }
 
