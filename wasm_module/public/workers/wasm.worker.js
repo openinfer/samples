@@ -491,8 +491,9 @@ const isValidInternal = (data, width, height, simd, action, debug_type = 0, cb) 
     }
 
     const imageSize = data.length * data.BYTES_PER_ELEMENT;
-    const isValidImagePtr = wasmPrivModule._malloc(imageSize);
-    wasmPrivModule.HEAP8.set(data, isValidImagePtr / data.BYTES_PER_ELEMENT);
+
+    const isValidPtr = wasmPrivModule._malloc(imageSize);
+    wasmPrivModule.HEAP8.set(data, isValidPtr / data.BYTES_PER_ELEMENT);
 
     const outputBufferFirstPtr = wasmPrivModule._malloc(Int32Array.BYTES_PER_ELEMENT);
     const outputBufferLenPtr = wasmPrivModule._malloc(Int32Array.BYTES_PER_ELEMENT);
@@ -501,39 +502,32 @@ const isValidInternal = (data, width, height, simd, action, debug_type = 0, cb) 
     // create a pointer to interger to hold the length of the output buffer
     const resultLenPtr = wasmPrivModule._malloc(Int32Array.BYTES_PER_ELEMENT);
 
-    let result = null;
-    try{
-      result = wasmPrivModule._is_valid(
-        action,
-        isValidImagePtr, 
-        width, 
-        height, 
-        outputBufferFirstPtr, 
-        outputBufferLenPtr, 
-        resultFirstPtr, 
-        resultLenPtr, 
-      );
-    }
-    catch(e){
-      console.log("isValidInternal Error:", e)
-    }
-   
-    // const [resultLength] = new Uint32Array(wasmPrivModule.HEAPU8.buffer, resultLenPtr, 1);
-    // const [resultSecPtr] = new Uint32Array(wasmPrivModule.HEAPU8.buffer, resultFirstPtr, 1);
+    wasmPrivModule._is_valid(
+      action,
+      isValidPtr,
+      width,
+      height,
+      outputBufferFirstPtr,
+      outputBufferLenPtr,
+      resultFirstPtr,
+      resultLenPtr,
+    );
 
-    // const resultDataArray = new Uint8Array(wasmPrivModule.HEAPU8.buffer, resultSecPtr, resultLength);
+    const [resultLength] = new Uint32Array(wasmPrivModule.HEAPU8.buffer, resultLenPtr, 1);
+    const [resultSecPtr] = new Uint32Array(wasmPrivModule.HEAPU8.buffer, resultFirstPtr, 1);
 
-    // const resultString = String.fromCharCode.apply(null, resultDataArray);
+    const resultDataArray = new Uint8Array(wasmPrivModule.HEAPU8.buffer, resultSecPtr, resultLength);
+    const resultString = String.fromCharCode.apply(null, resultDataArray);
 
-    // const ageData = JSON.parse(resultString);
+    const resultData = JSON.parse(resultString);
 
     wasmPrivModule._free(outputBufferFirstPtr);
     wasmPrivModule._free(outputBufferLenPtr);
     wasmPrivModule._free(resultFirstPtr);
     wasmPrivModule._free(resultLenPtr);
-    wasmPrivModule._free(isValidImagePtr);
+    wasmPrivModule._free(isValidPtr);
 
-    resolve( { result } );
+    resolve(resultData);
   });
 
 const isValidFrontDocument = (imagePtr, width, height, simd, action, debug_type = 0, cb) =>
