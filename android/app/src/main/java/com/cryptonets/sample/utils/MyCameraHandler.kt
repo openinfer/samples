@@ -1,8 +1,11 @@
 package com.cryptonets.sample.utils
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import android.util.Size
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -19,6 +22,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 class MyCameraHandler(private val activity: FragmentActivity, private val previewView: PreviewView) {
@@ -27,7 +32,9 @@ class MyCameraHandler(private val activity: FragmentActivity, private val previe
     private val compositeDisposable: CompositeDisposable = CompositeDisposable()
     private var camera: Camera? = null
     private var imageAnalyzeRate = 100 //ms
+    private var lastImageAnalyzeTime = 0L
     private var imageListener: ImageListener? = null
+    private val executor: Executor = Executors.newSingleThreadExecutor()
 
     fun setUpCamera(selectedCamera: Int = 0, imageListener: ImageListener) {
         this.imageListener = imageListener
@@ -39,6 +46,7 @@ class MyCameraHandler(private val activity: FragmentActivity, private val previe
         }, ContextCompat.getMainExecutor(activity))
     }
 
+    @SuppressLint("UnsafeOptInUsageError")
     private fun startCamera(selectedCamera: Int) {
         CoroutineScope(Dispatchers.Main).launch {
             var cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
@@ -51,6 +59,24 @@ class MyCameraHandler(private val activity: FragmentActivity, private val previe
                 .also {
                     it.setSurfaceProvider(previewView.surfaceProvider)
                 }
+
+            val imageAnalysis = ImageAnalysis.Builder()
+                .setTargetResolution(Size(480, 640))
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+            imageAnalysis.setAnalyzer(executor, ImageAnalysis.Analyzer { imageProxy ->
+                if (isProcessingImage || System.currentTimeMillis() - lastImageAnalyzeTime < imageAnalyzeRate) {
+                    imageProxy.close()
+                    return@Analyzer
+                }
+                lastImageAnalyzeTime = System.currentTimeMillis()
+                val imageDetails = imageProxy.image?.let { Utils.getByteArrayFromImage(it) }
+                if (imageDetails != null) {
+                    val imageRaw = CommonMethods.getImageDetailLib(imageDetails, imageProxy.imageInfo.rotationDegrees)
+                    imageListener?.invoke(imageRaw)
+                }
+                imageProxy.close()
+            })
             try {
                 // Unbind use cases before rebinding
                 cameraProvider.unbindAll()
@@ -58,9 +84,10 @@ class MyCameraHandler(private val activity: FragmentActivity, private val previe
                 camera = cameraProvider.bindToLifecycle(
                     activity,
                     cameraSelector,
-                    preview
+                    preview,
+                    imageAnalysis
                 )
-                startPreviewCatcher()
+//                startPreviewCatcher()
             } catch (exc: Exception) {
                 Timber.i(
                     " startCamera exception -- Use case binding failed " + exc.message
