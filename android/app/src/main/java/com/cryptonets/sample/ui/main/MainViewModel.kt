@@ -169,7 +169,7 @@ class MainViewModel @Inject constructor(
             }
             if (responseIsValid.status == 0) {
                 enrollImageByteArray.add(imageRawDataInfo.imageData)
-                val status1 = resourceProvider.getString(R.string.face_valid_message)
+                var status1 = resourceProvider.getString(R.string.face_valid_message)
                 val percent =
                     resourceProvider.getString(
                         R.string.enroll_progress_, (enrollImageByteArray.size * 100 / 10).toString()
@@ -192,10 +192,9 @@ class MainViewModel @Inject constructor(
                         val status5 = resourceProvider.getString(R.string.enrolled_guid_, guid)
                         _statusLiveData.value = Status(status1, status2, percent, status4, status5)
                     } else {
+                        status1 = enrollResult.message
                         val status2 = resourceProvider.getString(R.string.enroll_failed)
                         _statusLiveData.value = Status(status1, status2, percent)
-                        enrollImageByteArray.clear()
-                        isEnrolled = false
                     }
 
                 }
