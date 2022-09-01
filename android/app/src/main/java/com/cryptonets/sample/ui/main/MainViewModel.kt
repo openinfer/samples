@@ -88,7 +88,12 @@ class MainViewModel @Inject constructor(
             if (responseIsValid.status == 0) {
                 _statusLiveData.value = Status(resourceProvider.getString(R.string.face_valid_message))
             } else {
-                _statusLiveData.value = Status(resourceProvider.getString(R.string.face_invalid_message))
+                val status = if (responseIsValid.message.isNullOrEmpty()) {
+                    resourceProvider.getString(R.string.face_invalid_message)
+                } else {
+                    responseIsValid.message
+                }
+                _statusLiveData.value = Status(status)
             }
             cameraHandler.isProcessingImage = false
         }
@@ -98,7 +103,11 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             cameraHandler.isProcessingImage = true
             predictUser(imageDetails)?.let {
-                val status1 = resourceProvider.getString(R.string.face_valid_message)
+                val status1 = if (it.message.isNullOrEmpty()) {
+                    resourceProvider.getString(R.string.face_valid_message)
+                } else {
+                    it.message
+                }
                 val status2 = resourceProvider.getString(R.string.predict_uuid_, it.piModel.uuid)
                 val status3 = resourceProvider.getString(R.string.predict_guid_, it.piModel.guid)
                 _statusLiveData.value = Status(status1, status2, status3)
@@ -191,10 +200,14 @@ class MainViewModel @Inject constructor(
 
                 }
             } else {
-                _statusLiveData.value = Status(
-                    resourceProvider.getString(R.string.face_invalid_message),
-                    resourceProvider.getString(R.string.enroll_please_look_at_the_camera)
-                )
+                if (responseIsValid.message.isNullOrEmpty()) {
+                    _statusLiveData.value = Status(
+                        resourceProvider.getString(R.string.face_invalid_message),
+                        resourceProvider.getString(R.string.enroll_please_look_at_the_camera)
+                    )
+                } else {
+                    _statusLiveData.value = Status(responseIsValid.message)
+                }
             }
 
             cameraHandler.isProcessingImage = false
