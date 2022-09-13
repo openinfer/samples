@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { enrollPredict } from '@privateid/cryptonets-web-sdk';
+import { enrollOneFA } from '@privateid/cryptonets-web-sdk';
 
-const useEnroll = (element = 'userVideo', onSuccess, retryTimes = 4 , deviceId = null) => {
+const useEnrollOneFa = (element = 'userVideo', onSuccess, retryTimes = 4 , deviceId = null) => {
   const [faceDetected, setFaceDetected] = useState(false);
   const [enrollStatus, setEnrollStatus] = useState(null);
   const [progress, setProgress] = useState(0);
@@ -9,9 +9,9 @@ const useEnroll = (element = 'userVideo', onSuccess, retryTimes = 4 , deviceId =
 
   let tries = 0;
 
-  const enrollUser = async () => {
+  const enrollUserOneFa = async () => {
       // eslint-disable-next-line no-unused-vars
-      const portrait = await enrollPredict(true, callback, {}, element, deviceId);
+      const portrait = await enrollOneFA(callback, element, deviceId);
   };
 
 
@@ -89,7 +89,7 @@ const useEnroll = (element = 'userVideo', onSuccess, retryTimes = 4 , deviceId =
             // onFailure();
           } else {
             tries += 1;
-            enrollUser();
+            // enrollUserOneFa();
           }
         }
         break;
@@ -97,7 +97,7 @@ const useEnroll = (element = 'userVideo', onSuccess, retryTimes = 4 , deviceId =
     }
   };
 
-  return { faceDetected, enrollStatus, enrollData, enrollUser, progress };
+  return { faceDetected, enrollStatus, enrollData, enrollUserOneFa, progress };
 };
 
-export default useEnroll;
+export default useEnrollOneFa;

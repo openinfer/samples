@@ -481,6 +481,98 @@ const FHE_enroll = (originalImages, simd, action, debug_type = 0, cb, config = {
     resolve({ result, href });
   });
 
+  const FHE_enrollOnefa = (originalImages, simd, debug_type = 0, cb, config = {}) =>
+  new Promise(async (resolve) => {
+    privid_wasm_result = cb;
+    if (!wasmPrivModule) {
+      console.log('loaded for first wsm wrkr', simd, action);
+      await isLoad(simd, apiUrl, apiKey, wasmModule, debugType);
+    }
+    // console.log('-------WASM----WORKER------', simd, action);
+    const numImages = originalImages.length;
+    const imageInput = flatten(
+      originalImages.map((x) => x.data),
+      Uint8Array,
+    );
+    const version = wasmPrivModule._get_version();
+    console.log('Version = ', version);
+
+    const encoder = new TextEncoder();
+    const config_bytes = encoder.encode(`${config}\0`);
+
+    const configInputSize = config.length;
+    const configInputPtr = wasmPrivModule._malloc(configInputSize);
+    wasmPrivModule.HEAP8.set(config_bytes, configInputPtr / config_bytes.BYTES_PER_ELEMENT);
+
+    const imageInputSize = imageInput.length * imageInput.BYTES_PER_ELEMENT;
+    const imageInputPtr = wasmPrivModule._malloc(imageInputSize);
+
+    wasmPrivModule.HEAP8.set(imageInput, imageInputPtr / imageInput.BYTES_PER_ELEMENT);
+
+    const BufferSize = wasmPrivModule._spl_image_embedding_length();
+    // outupt  ptr
+    const outputBufferSize = BufferSize * 4 * 80;
+    const outputBufferPtr = wasmPrivModule._malloc(outputBufferSize);
+
+    const augmBufferSize = 224 * 224 * 4 * 100;
+    const augmBufferPtr = wasmPrivModule._malloc(augmBufferSize);
+
+    const resultFirstPtr = wasmPrivModule._malloc(Int32Array.BYTES_PER_ELEMENT);
+    // create a pointer to interger to hold the length of the output buffer
+    const resultLenPtr = wasmPrivModule._malloc(Int32Array.BYTES_PER_ELEMENT);
+    let result = null;
+    console.log("wasmPrivModule",wasmPrivModule)
+    try {
+      result = await wasmPrivModule._privid_enroll_onefa(1,
+        null,
+        0,
+        imageInputPtr,
+        numImages,
+        originalImages[0].data.length,
+        originalImages[0].width,
+        originalImages[0].height,
+        null,
+        0,
+        true,
+        augmBufferPtr,
+        0,
+        resultFirstPtr,
+        resultLenPtr
+      );
+    } catch (e) {
+      console.error('---------__E__-------', e);
+    }
+
+    const href = [];
+    if (['900', '901', '902', '903'].includes(debug_type)) {
+      const num = action ? 80 : 1;
+      const AugmputArray = new Uint8Array(wasmPrivModule.HEAPU8.buffer, augmBufferPtr, 224 * 224 * 4 * num);
+
+      const img_width = 224;
+      const img_height = 224;
+      const dataLength = 200704;
+
+      const numImages = AugmputArray.length / dataLength;
+
+      for (let i = 0; i < numImages; i++) {
+        const img = AugmputArray.slice(i * dataLength, (i + 1) * dataLength);
+        const img_data = Uint8ClampedArray.from(img);
+
+        const image = new ImageData(img_data, img_width, img_height);
+
+        href.push(image);
+      }
+    }
+
+    wasmPrivModule._free(imageInputPtr);
+    wasmPrivModule._free(outputBufferPtr);
+    wasmPrivModule._free(augmBufferPtr);
+    wasmPrivModule._free(configInputPtr);
+    wasmPrivModule._free(resultFirstPtr);
+
+    resolve({ result, href });
+  });
+
 const isValidInternal = (data, width, height, simd, action, debug_type = 0, cb) =>
   new Promise(async (resolve) => {
     privid_wasm_result = cb;
@@ -501,24 +593,29 @@ const isValidInternal = (data, width, height, simd, action, debug_type = 0, cb) 
     const resultFirstPtr = wasmPrivModule._malloc(Int32Array.BYTES_PER_ELEMENT);
     // create a pointer to interger to hold the length of the output buffer
     const resultLenPtr = wasmPrivModule._malloc(Int32Array.BYTES_PER_ELEMENT);
-
-    wasmPrivModule._is_valid(
-      action,
-      isValidPtr,
-      width,
-      height,
-      outputBufferFirstPtr,
-      outputBufferLenPtr,
-      resultFirstPtr,
-      resultLenPtr,
-    );
+    let result = null;
+    try{
+      result = await wasmPrivModule._is_valid(
+        action,
+        isValidPtr,
+        width,
+        height,
+        outputBufferFirstPtr,
+        outputBufferLenPtr,
+        resultFirstPtr,
+        resultLenPtr,
+      );
+    }
+    catch(e){
+      console.log("_is_valid error", e)
+    }
+    
 
     const [resultLength] = new Uint32Array(wasmPrivModule.HEAPU8.buffer, resultLenPtr, 1);
     const [resultSecPtr] = new Uint32Array(wasmPrivModule.HEAPU8.buffer, resultFirstPtr, 1);
 
     const resultDataArray = new Uint8Array(wasmPrivModule.HEAPU8.buffer, resultSecPtr, resultLength);
     const resultString = String.fromCharCode.apply(null, resultDataArray);
-
     const resultData = JSON.parse(resultString);
 
     wasmPrivModule._free(outputBufferFirstPtr);
@@ -663,6 +760,7 @@ function putKey(key, cachedWasm, cachedScript, version) {
 
 Comlink.expose({
   FHE_enroll,
+  FHE_enrollOnefa,
   isValidInternal,
   isLoad,
   voicePredict,
