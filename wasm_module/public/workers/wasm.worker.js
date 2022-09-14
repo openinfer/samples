@@ -54,7 +54,6 @@ const isLoad = (simd, url, key, module, debug_type = '0') =>
           const urlInputSize = url_bytes.length * url_bytes.BYTES_PER_ELEMENT;
           const urlInputtPtr = wasmPrivModule._malloc(urlInputSize);
           wasmPrivModule.HEAP8.set(url_bytes, urlInputtPtr / url_bytes.BYTES_PER_ELEMENT);
-          console.log("------->Before Wasm PrivModule ccall", url)
           wasmPrivModule.ccall('FHE_configure_url', 'int', [], [42, urlInputtPtr, url? url.length:0]);
           wasmPrivModule._free(urlInputtPtr);
         }

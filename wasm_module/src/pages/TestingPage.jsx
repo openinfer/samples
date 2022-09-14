@@ -341,12 +341,12 @@ const Ready = () => {
           <button className="button" onClick={handeEnrollOneFa}>
             Enroll 1FA
           </button>
-          {/* <button className='button' onClick={handleIsValid}> Is Valid </button>
+          <button className='button' onClick={handleIsValid}> Is Valid </button>
           <button className='button' onClick={handleEnroll}> Enroll </button>
           <button className='button' onClick={handleContinuousPredict}> Continuous Predict </button>
           <button className='button' onClick={handleDelete}> Delete </button>
           <button className='button' onClick={handleScanDLFront}> Scan Front Document</button>
-          <button className='button' onClick={handleScanDocumentBack}> Scan Back Document</button> */}
+          <button className='button' onClick={handleScanDocumentBack}> Scan Back Document</button>
         </div>
       </div>
     </div>
