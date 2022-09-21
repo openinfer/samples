@@ -12,7 +12,7 @@ const useCamera = (element = 'userVideo') => {
   const init = async () => {
     if (ready) return;
     try {
-      const { devices, faceMode, stream, settings } = await openCamera(element);
+      const { devices, faceMode, stream, settings } = await openCamera(element,false);
       console.log("camera settings", settings)
       setFaceMode(faceMode);
       if (devices.length > 0) {
