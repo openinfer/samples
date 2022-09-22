@@ -584,21 +584,19 @@ const FHE_enrollOnefa = (originalImages, simd, debug_type = 0, cb) =>
     wasmPrivModule._free(imageInputPtr);
     wasmPrivModule._free(outputBufferPtr);
     wasmPrivModule._free(augmBufferPtr);
-    // wasmPrivModule._free(configInputPtr);
     wasmPrivModule._free(resultFirstPtr);
 
     resolve({ result, href });
   });
 
-
-  const FHE_predictOnefa = (originalImages, simd, debug_type = 0, cb) =>
+const FHE_predictOnefa = (originalImages, simd, debug_type = 0, cb) =>
   new Promise(async (resolve) => {
     privid_wasm_result = cb;
     if (!wasmPrivModule) {
       console.log('loaded for first wsm wrkr', simd, action);
       await isLoad(simd, apiUrl, apiKey, wasmModule, debugType);
     }
-    // console.log('-------WASM----WORKER------', simd, action);
+
     const numImages = originalImages.length;
     const imageInput = flatten(
       originalImages.map((x) => x.data),
@@ -606,13 +604,6 @@ const FHE_enrollOnefa = (originalImages, simd, debug_type = 0, cb) =>
     );
     const version = wasmPrivModule._get_version();
     console.log('Version = ', version);
-
-    // const encoder = new TextEncoder();
-    // const config_bytes = encoder.encode(`${config}\0`);
-
-    // const configInputSize = config.length;
-    // const configInputPtr = wasmPrivModule._malloc(configInputSize);
-    // wasmPrivModule.HEAP8.set(config_bytes, configInputPtr / config_bytes.BYTES_PER_ELEMENT);
 
     const imageInputSize = imageInput.length * imageInput.BYTES_PER_ELEMENT;
     const imageInputPtr = wasmPrivModule._malloc(imageInputSize);
@@ -634,7 +625,7 @@ const FHE_enrollOnefa = (originalImages, simd, debug_type = 0, cb) =>
     let result = null;
     console.log('wasmPrivModule', wasmPrivModule);
 
-    // console.log('[FAR_DEBUG] : Calling session preparation')
+
     const sessionFirstPtr = wasmPrivModule._malloc(Int32Array.BYTES_PER_ELEMENT);
     const s_result = wasmPrivModule._privid_initialize_session_join(sessionFirstPtr, null);
     if (s_result) {
@@ -642,13 +633,11 @@ const FHE_enrollOnefa = (originalImages, simd, debug_type = 0, cb) =>
     } else {
       console.log('[FAR_DEBUG] : session initialized failed');
     }
-    // console.log('[FAR_DEBUG] : Getting session second pointer')
-    const [sessionSecPtr] = new Uint32Array(wasmPrivModule.HEAPU8.buffer, sessionFirstPtr, 1);
-    // console.log(`[FAR_DEBUG] : Session second pointer = [${  sessionSecPtr  }]`)
 
-    // console.log('[FAR_DEBUG] : Calling enroll_onefa')
+    const [sessionSecPtr] = new Uint32Array(wasmPrivModule.HEAPU8.buffer, sessionFirstPtr, 1);
+
     try {
-      result = await wasmPrivModule._privid_enroll_onefa(
+      result = await wasmPrivModule._privid_predict_onefa(
         sessionSecPtr /* session pointer */,
         null /* user configuration */,
         0 /* user configuration length */,
@@ -668,7 +657,6 @@ const FHE_enrollOnefa = (originalImages, simd, debug_type = 0, cb) =>
     } catch (e) {
       console.error('---------__E__-------', e);
     }
-    // console.log('[FAR_DEBUG] : enroll_onefa done')
 
     const href = [];
     if (['900', '901', '902', '903'].includes(debug_type)) {
@@ -694,7 +682,6 @@ const FHE_enrollOnefa = (originalImages, simd, debug_type = 0, cb) =>
     wasmPrivModule._free(imageInputPtr);
     wasmPrivModule._free(outputBufferPtr);
     wasmPrivModule._free(augmBufferPtr);
-    // wasmPrivModule._free(configInputPtr);
     wasmPrivModule._free(resultFirstPtr);
 
     resolve({ result, href });
@@ -721,7 +708,7 @@ const isValidInternal = (data, width, height, simd, action, debug_type = 0, cb) 
     // create a pointer to interger to hold the length of the output buffer
     const resultLenPtr = wasmPrivModule._malloc(Int32Array.BYTES_PER_ELEMENT);
 
-    wasmPrivModule._is_valid(
+    const result = await wasmPrivModule._is_valid(
       action,
       isValidPtr,
       width,
@@ -732,13 +719,14 @@ const isValidInternal = (data, width, height, simd, action, debug_type = 0, cb) 
       resultLenPtr,
     );
 
-    const [resultLength] = new Uint32Array(wasmPrivModule.HEAPU8.buffer, resultLenPtr, 1);
-    const [resultSecPtr] = new Uint32Array(wasmPrivModule.HEAPU8.buffer, resultFirstPtr, 1);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    // const [resultLength] = new Uint32Array(wasmPrivModule.HEAPU8.buffer, resultLenPtr, 1);
+    // const [resultSecPtr] = new Uint32Array(wasmPrivModule.HEAPU8.buffer, resultFirstPtr, 1);
 
-    const resultDataArray = new Uint8Array(wasmPrivModule.HEAPU8.buffer, resultSecPtr, resultLength);
-    const resultString = String.fromCharCode.apply(null, resultDataArray);
+    // const resultDataArray = new Uint8Array(wasmPrivModule.HEAPU8.buffer, resultSecPtr, resultLength);
+    // const resultString = String.fromCharCode.apply(null, resultDataArray);
 
-    const resultData = JSON.parse(resultString);
+    // const resultData = JSON.parse(resultString);
 
     wasmPrivModule._free(outputBufferFirstPtr);
     wasmPrivModule._free(outputBufferLenPtr);
@@ -746,7 +734,7 @@ const isValidInternal = (data, width, height, simd, action, debug_type = 0, cb) 
     wasmPrivModule._free(resultLenPtr);
     wasmPrivModule._free(isValidPtr);
 
-    resolve(resultData);
+    resolve({result});
   });
 
 const isValidFrontDocument = (imagePtr, width, height, simd, action, debug_type = 0, cb) =>
@@ -883,6 +871,7 @@ function putKey(key, cachedWasm, cachedScript, version) {
 Comlink.expose({
   FHE_enroll,
   FHE_enrollOnefa,
+  FHE_predictOnefa,
   isValidInternal,
   isLoad,
   voicePredict,
